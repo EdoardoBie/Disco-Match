@@ -4,7 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Question, Profile } from '@/types';
-import { Plus, Trash2, ToggleLeft, ToggleRight, ArrowLeft, Users, Activity, Settings, LayoutDashboard, MessageSquare, Database, ShieldAlert, Key } from 'lucide-react';
+import { Plus, Trash2, ToggleLeft, ToggleRight, ArrowLeft, Users, Activity, Settings, LayoutDashboard, MessageSquare, Database, ShieldAlert, Key, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiquidButton } from '@/components/ui/liquid-glass-button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -45,6 +45,7 @@ export default function Admin() {
   
   // Users State
   const [usersList, setUsersList] = useState<Profile[]>([]);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   
   // Settings State
   const [newAdminPassword, setNewAdminPassword] = useState('');
@@ -184,6 +185,42 @@ export default function Admin() {
       // Background refetch for other tabs if needed (stats)
       if (activeTab === 'overview') fetchDashboardData();
     }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: 'admin' | 'user') => {
+    // Optimistic Update
+    setUsersList(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId);
+      
+    if (error) {
+       console.error('Error updating user role:', error);
+       alert('Errore durante l\'aggiornamento del ruolo.');
+       fetchDashboardData(); // Revert on error
+    }
+    setSelectedUser(null);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm('Sei sicuro di voler eliminare questo utente? Questa azione è irreversibile e cancellerà anche tutte le sue risposte e messaggi.')) return;
+    
+    // Optimistic Update
+    setUsersList(prev => prev.filter(u => u.id !== userId));
+
+    // Note: To fully delete an auth user requires service_role key or an RPC function bypassing RLS.
+    // For now, deleting from 'profiles' will cascade to answers/messages, but the auth user remains.
+    // Ideally, a secure RPC function should be used to delete the auth.user entirely.
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    
+    if (error) {
+       console.error('Error deleting user profile:', error);
+       alert('Errore durante l\'eliminazione dell\'utente.');
+       fetchDashboardData();
+    }
+    setSelectedUser(null);
   };
 
   const handleUpdatePassword = async () => {
@@ -428,7 +465,11 @@ export default function Admin() {
                           </span>
                         </td>
                         <td className="p-4 text-right">
-                          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-500 hover:text-white" title="Settings">
+                          <button 
+                            onClick={() => setSelectedUser(u)}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-500 hover:text-white" 
+                            title="Impostazioni Utente"
+                          >
                             <Settings className="w-4 h-4" />
                           </button>
                         </td>
@@ -473,6 +514,79 @@ export default function Admin() {
                 )}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* USER SETTINGS MODAL */}
+      <AnimatePresence>
+        {selectedUser && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#1A1A1A] w-full max-w-md rounded-3xl border border-white/10 overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <h3 className="font-black uppercase tracking-tighter text-lg">Impostazioni Utente</h3>
+                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-black/50 border border-white/10 flex items-center justify-center overflow-hidden font-black text-2xl uppercase">
+                     {selectedUser.avatar_url ? <img src={selectedUser.avatar_url} className="w-full h-full object-cover" /> : <span className="text-zinc-500">{selectedUser.nickname?.[0] || 'O'}</span>}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xl uppercase tracking-tight">{selectedUser.nickname || 'Ospite'}</h4>
+                    <span className={`text-[10px] px-2 py-1 rounded font-black uppercase tracking-widest mt-1 block w-fit ${selectedUser.role === 'admin' ? 'bg-[#934517]/20 text-[#934517]' : 'bg-white/10 text-zinc-400'}`}>
+                      {selectedUser.role}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Ruolo</label>
+                    <div className="flex gap-2">
+                       <button
+                         onClick={() => handleUpdateUserRole(selectedUser.id, 'user')}
+                         className={`flex-1 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-colors ${selectedUser.role === 'user' ? 'bg-white/10 text-white border border-white/20' : 'bg-transparent text-zinc-500 border border-white/5 hover:bg-white/5'}`}
+                       >
+                         Utente
+                       </button>
+                       <button
+                         onClick={() => handleUpdateUserRole(selectedUser.id, 'admin')}
+                         className={`flex-1 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-colors ${selectedUser.role === 'admin' ? 'bg-[#934517]/20 text-[#934517] border border-[#934517]/30' : 'bg-transparent text-zinc-500 border border-white/5 hover:bg-white/5'}`}
+                       >
+                         Admin
+                       </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <button 
+                      onClick={() => handleDeleteUser(selectedUser.id)}
+                      className="w-full py-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 border border-red-500/20 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Elimina Utente
+                    </button>
+                    <p className="text-[10px] text-zinc-500 text-center mt-2 font-bold uppercase tracking-widest">
+                       Attenzione: Eliminerà anche messaggi e risposte
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

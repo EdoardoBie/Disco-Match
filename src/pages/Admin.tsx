@@ -292,13 +292,13 @@ export default function Admin() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6 p-4 pb-20 max-w-5xl mx-auto"
+      className="space-y-6 pb-20 w-full max-w-md mx-auto flex flex-col"
     >
-      <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pb-4 border-b border-white/10">
-        <div className="flex items-center gap-4">
+      <header className="flex flex-col gap-4 pb-4 border-b border-white/10 w-full">
+        <div className="flex flex-col items-center justify-center gap-2 text-center relative pt-2">
           <button 
             onClick={() => navigate('/dashboard')}
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/10"
+            className="absolute left-0 top-0 p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/10"
           >
             <ArrowLeft className="w-5 h-5 text-zinc-400" />
           </button>
@@ -309,7 +309,7 @@ export default function Admin() {
         </div>
         
         {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto gap-2 pb-2 sm:pb-0 hide-scrollbar">
+        <div className="flex overflow-x-auto gap-2 pb-2 hide-scrollbar w-full justify-start">
           {[
             { id: 'overview', icon: LayoutDashboard, label: 'Panoramica' },
             { id: 'questions', icon: MessageSquare, label: 'Domande' },
@@ -335,15 +335,15 @@ export default function Admin() {
       <AnimatePresence mode="wait">
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
-          <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 w-full">
+            <div className="grid grid-cols-1 gap-4">
               <StatCard icon={Users} label="Utenti Registrati" value={stats.users} />
               <StatCard icon={Activity} label="Risposte Totali" value={stats.answers} />
               <StatCard icon={Database} label="Domande Attive" value={stats.questions} />
             </div>
             
-            <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-xl">
-              <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-6">Top 5 Domande più risposte</h2>
+            <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-xl w-full">
+              <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-6 text-center">Top 5 Domande più risposte</h2>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -368,22 +368,22 @@ export default function Admin() {
 
         {/* QUESTIONS TAB */}
         {activeTab === 'questions' && (
-          <motion.div key="questions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 space-y-4 shadow-xl">
-              <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500">Crea Nuova Domanda</h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+          <motion.div key="questions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 w-full">
+            <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 space-y-4 shadow-xl w-full">
+              <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500 text-center">Crea Nuova Domanda</h2>
+              <div className="flex flex-col gap-3">
                 <input
                   type="text"
                   value={newQuestionText}
                   onChange={(e) => setNewQuestionText(e.target.value)}
                   placeholder="Testo della domanda..."
-                  className="flex-1 bg-black/50 border border-white/10 rounded-xl p-4 text-white focus:border-[#934517] outline-none transition-all placeholder:text-zinc-700"
+                  className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white focus:border-[#934517] outline-none transition-all placeholder:text-zinc-700 text-center font-bold"
                 />
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full">
                   <select
                     value={newQuestionType}
                     onChange={(e) => setNewQuestionType(e.target.value as any)}
-                    className="bg-black/50 border border-white/10 rounded-xl p-4 text-white text-xs font-bold uppercase tracking-widest focus:border-[#934517] outline-none"
+                    className="flex-1 bg-black/50 border border-white/10 rounded-xl p-4 text-white text-xs font-bold uppercase tracking-widest focus:border-[#934517] outline-none text-center"
                   >
                     <option value="text">Testo</option>
                     <option value="choice">Scelta</option>
@@ -391,7 +391,7 @@ export default function Admin() {
                   </select>
                   <button
                     onClick={handleCreateQuestion}
-                    className="bg-[#934517] hover:bg-[#a65220] text-black p-4 rounded-xl transition-all shadow-lg"
+                    className="bg-[#934517] hover:bg-[#a65220] text-black p-4 rounded-xl transition-all shadow-lg flex items-center justify-center aspect-square"
                   >
                     <Plus className="w-6 h-6" />
                   </button>
@@ -399,31 +399,32 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500">Gestione Domande</h2>
-              <div className="grid gap-3">
+            <div className="space-y-4 w-full">
+              <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500 text-center">Gestione Domande</h2>
+              <div className="flex flex-col gap-3">
                 {questions.map((q) => (
                   <div 
                     key={q.id} 
-                    className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/5 flex justify-between items-center group hover:border-white/10 transition-all"
+                    className="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center group hover:border-white/10 transition-all text-center gap-3"
                   >
                     <div>
-                      <p className="font-bold text-lg">{q.text}</p>
-                      <div className="flex gap-2 mt-2">
+                      <p className="font-bold text-lg leading-tight">{q.text}</p>
+                      <div className="flex gap-2 mt-2 justify-center">
                         <span className="text-[10px] bg-white/10 px-2 py-1 rounded text-zinc-400 font-black uppercase tracking-widest">{q.type}</span>
                         {!q.is_active && <span className="text-[10px] bg-red-500/20 px-2 py-1 rounded text-red-400 font-black uppercase tracking-widest">Disattivata</span>}
                       </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 justify-center w-full pt-3 border-t border-white/5">
                       <button 
                         onClick={() => toggleQuestionStatus(q.id, q.is_active)}
-                        className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                        className="p-2 hover:bg-white/5 rounded-lg transition-colors flex flex-col items-center gap-1"
                       >
-                        {q.is_active ? <ToggleRight className="text-[#934517] w-8 h-8" /> : <ToggleLeft className="text-zinc-700 w-8 h-8" />}
+                        {q.is_active ? <ToggleRight className="text-[#934517] w-6 h-6" /> : <ToggleLeft className="text-zinc-700 w-6 h-6" />}
                       </button>
+                      <div className="w-px bg-white/5"></div>
                       <button 
                         onClick={() => deleteQuestion(q.id)} 
-                        className="p-2 hover:bg-red-500/10 rounded-lg text-zinc-700 hover:text-red-400 transition-colors"
+                        className="p-2 hover:bg-red-500/10 rounded-lg text-zinc-700 hover:text-red-400 transition-colors flex flex-col items-center gap-1"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -437,76 +438,66 @@ export default function Admin() {
 
         {/* USERS TAB */}
         {activeTab === 'users' && (
-          <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
-            <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 shadow-xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-black/20">
-                      <th className="p-4 text-xs font-black uppercase tracking-widest text-zinc-500">Utente</th>
-                      <th className="p-4 text-xs font-black uppercase tracking-widest text-zinc-500">Ruolo</th>
-                      <th className="p-4 text-xs font-black uppercase tracking-widest text-zinc-500 text-right">Azioni</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usersList.map((u) => (
-                      <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-black/50 border border-white/10 flex items-center justify-center overflow-hidden font-black uppercase">
-                              {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-sm text-zinc-500">{u.nickname?.[0] || 'O'}</span>}
-                            </div>
-                            <span className="font-bold uppercase tracking-tight">{u.nickname || 'Ospite'}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <span className={`text-[10px] px-2 py-1 rounded font-black uppercase tracking-widest ${u.role === 'admin' ? 'bg-[#934517]/20 text-[#934517]' : 'bg-white/10 text-zinc-400'}`}>
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button 
-                            onClick={() => setSelectedUser(u)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-500 hover:text-white" 
-                            title="Impostazioni Utente"
-                          >
-                            <Settings className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 w-full">
+            <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500 text-center mb-4">Gestione Utenti</h2>
+            <div className="flex flex-col gap-3">
+              {usersList.map((u) => (
+                <div key={u.id} className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4 flex flex-col items-center justify-center gap-4 hover:border-white/20 transition-all">
+                  <div className="flex flex-col items-center justify-center text-center gap-2 w-full">
+                    <div className="w-16 h-16 rounded-full bg-black/50 border border-white/10 flex items-center justify-center overflow-hidden font-black text-2xl uppercase relative">
+                      {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-zinc-500">{u.nickname?.[0] || 'O'}</span>}
+                      {u.role === 'admin' && (
+                        <div className="absolute bottom-0 w-full h-1 bg-[#934517]" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-lg uppercase tracking-tight">{u.nickname || 'Ospite'}</h4>
+                      <span className={`text-[10px] px-2 py-1 rounded font-black uppercase tracking-widest mt-1 block mx-auto w-fit ${u.role === 'admin' ? 'bg-[#934517]/20 text-[#934517]' : 'bg-white/10 text-zinc-400'}`}>
+                        {u.role}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full pt-4 border-t border-white/5 flex justify-center">
+                    <button 
+                      onClick={() => setSelectedUser(u)}
+                      className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-zinc-400 hover:text-white flex items-center gap-2 font-bold uppercase tracking-widest text-xs w-full justify-center" 
+                    >
+                      <Settings className="w-4 h-4" />
+                      Impostazioni Utente
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </motion.div>
         )}
 
         {/* SETTINGS TAB */}
         {activeTab === 'settings' && (
-          <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-xl space-y-6">
-              <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-                <ShieldAlert className="w-6 h-6 text-[#934517]" />
+          <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 w-full">
+            <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-xl space-y-6 w-full flex flex-col items-center text-center">
+              <div className="flex flex-col items-center gap-3 border-b border-white/10 pb-4 w-full">
+                <ShieldAlert className="w-8 h-8 text-[#934517]" />
                 <h2 className="text-lg font-black uppercase tracking-tighter text-white">Sicurezza</h2>
               </div>
               
-              <div className="space-y-4 max-w-md">
+              <div className="space-y-4 w-full">
                 <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Cambia Password Admin</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-3 w-full">
                   <input
                     type="password"
                     value={newAdminPassword}
                     onChange={(e) => setNewAdminPassword(e.target.value)}
                     placeholder="Nuova password..."
-                    className="flex-1 bg-black/50 border border-white/10 rounded-xl p-4 text-white focus:border-[#934517] outline-none transition-all placeholder:text-zinc-700"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white focus:border-[#934517] outline-none transition-all placeholder:text-zinc-700 text-center font-bold"
                   />
                   <button
                     onClick={handleUpdatePassword}
                     disabled={!newAdminPassword.trim()}
-                    className="bg-[#934517] hover:bg-[#a65220] disabled:opacity-50 disabled:cursor-not-allowed text-black p-4 rounded-xl transition-all shadow-lg"
+                    className="w-full flex items-center justify-center gap-2 bg-[#934517] hover:bg-[#a65220] disabled:opacity-50 disabled:cursor-not-allowed text-black p-4 rounded-xl transition-all shadow-lg font-black uppercase tracking-widest text-xs"
                   >
-                    <Key className="w-6 h-6" />
+                    <Key className="w-4 h-4" />
+                    Aggiorna
                   </button>
                 </div>
                 {settingsMessage && (

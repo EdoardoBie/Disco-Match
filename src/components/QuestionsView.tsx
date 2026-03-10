@@ -3,13 +3,15 @@ import { supabase } from '@/lib/supabase';
 import { Question, Answer } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, X } from 'lucide-react';
 
 interface QuestionsViewProps {
   onComplete?: () => void;
+  mode?: 'answer' | 'review';
+  onClose?: () => void;
 }
 
-export default function QuestionsView({ onComplete }: QuestionsViewProps) {
+export default function QuestionsView({ onComplete, mode = 'answer', onClose }: QuestionsViewProps) {
   const { user } = useAuth();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -38,7 +40,7 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
     if (questionsData) {
       setQuestions(questionsData);
       
-      // Find the first unanswered question to start with
+      // Find the appropriate starting index
       if (answersData) {
         const answersMap: Record<string, string> = {};
         answersData.forEach((a: Answer) => {
@@ -46,11 +48,15 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
         });
         setAnswers(answersMap);
 
-        const firstUnansweredIndex = questionsData.findIndex(q => !answersMap[q.id]);
-        if (firstUnansweredIndex !== -1) {
-          setCurrentIndex(firstUnansweredIndex);
+        if (mode === 'review') {
+           setCurrentIndex(0); // Start from the beginning in review mode
         } else {
-          setCurrentIndex(questionsData.length); // All answered
+           const firstUnansweredIndex = questionsData.findIndex(q => !answersMap[q.id]);
+           if (firstUnansweredIndex !== -1) {
+             setCurrentIndex(firstUnansweredIndex);
+           } else {
+             setCurrentIndex(questionsData.length); // All answered
+           }
         }
       }
     }
@@ -91,7 +97,7 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
     }
   };
 
-  const isFinished = !loading && questions.length > 0 && currentIndex >= questions.length;
+  const isFinished = !loading && questions.length > 0 && currentIndex >= questions.length && mode === 'answer';
 
   useEffect(() => {
     if (isFinished && onComplete) {
@@ -155,8 +161,17 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
         />
       </div>
 
-      {/* Back Button - Top Left */}
-      <div className="absolute top-6 left-6 z-20">
+      {/* Back/Nav Buttons - Top Left */}
+      <div className="absolute top-6 left-6 z-20 flex gap-2">
+        {mode === 'review' && onClose && (
+          <button 
+            onClick={onClose}
+            className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 transition-all hover:text-white backdrop-blur-md border border-white/5"
+            title="Chiudi rassegna"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
         <button 
           onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
           disabled={currentIndex === 0}
@@ -165,6 +180,19 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
+      
+      {/* Forward Nav - Top Right for Review Mode Only */}
+      {mode === 'review' && (
+        <div className="absolute top-6 right-6 z-20">
+          <button 
+            onClick={() => setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1))}
+            disabled={currentIndex === questions.length - 1}
+            className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 disabled:opacity-0 transition-all hover:text-white backdrop-blur-md border border-white/5"
+          >
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
@@ -211,27 +239,35 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
                   <input
                     type="text"
                     placeholder="SCRIVI QUI..."
-                    defaultValue={answers[currentQuestion.id] || ''}
+                    value={answers[currentQuestion.id] || ''}
+                    readOnly={mode === 'review'}
+                    onChange={(e) => {
+                      if (mode === 'answer') {
+                        setAnswers(prev => ({ ...prev, [currentQuestion.id]: e.target.value }));
+                      }
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && mode === 'answer') {
                         handleAnswer(currentQuestion.id, (e.target as HTMLInputElement).value);
                       }
                     }}
-                    className="w-full bg-transparent border-none p-0 text-white font-black tracking-tighter uppercase placeholder:text-zinc-800 focus:outline-none transition-all text-5xl md:text-6xl text-center caret-[#934517]"
-                    autoFocus
+                    className={`w-full bg-transparent border-none p-0 text-white font-black tracking-tighter uppercase placeholder:text-zinc-800 focus:outline-none transition-all text-5xl md:text-6xl text-center caret-[#934517] ${mode === 'review' ? 'opacity-80' : ''}`}
+                    autoFocus={mode === 'answer'}
                   />
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-24 h-1 bg-zinc-800 rounded-full group-focus-within:w-full group-focus-within:bg-white transition-all duration-500" />
+                  {mode === 'answer' && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-24 h-1 bg-zinc-800 rounded-full group-focus-within:w-full group-focus-within:bg-white transition-all duration-500" />}
                 </div>
 
-                <button 
-                  onClick={(e) => {
-                    const input = (e.currentTarget.previousSibling?.firstChild as HTMLInputElement);
-                    if (input) handleAnswer(currentQuestion.id, input.value);
-                  }}
-                  className="mx-auto py-4 px-8 rounded-full bg-white text-black font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-zinc-200 transition-all active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.1)]"
-                >
-                  Conferma <ArrowRight className="w-5 h-5" />
-                </button>
+                {mode === 'answer' && (
+                  <button 
+                    onClick={() => {
+                        handleAnswer(currentQuestion.id, answers[currentQuestion.id] || '');
+                    }}
+                    disabled={!answers[currentQuestion.id]?.trim()}
+                    className="mx-auto py-4 px-8 rounded-full bg-white text-black font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-zinc-200 transition-all active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Conferma <ArrowRight className="w-5 h-5" />
+                  </button>
+                )}
               </motion.div>
             )}
 
@@ -245,11 +281,12 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
                     transition={{ delay: 0.1 + (i * 0.05) }}
                     whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.15)" }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => handleAnswer(currentQuestion.id, option)}
+                    onClick={() => mode === 'answer' && handleAnswer(currentQuestion.id, option)}
+                    disabled={mode === 'review'}
                     className={`group relative overflow-hidden p-6 md:p-8 rounded-2xl text-xl md:text-2xl font-black uppercase tracking-tight transition-all text-center flex justify-center items-center backdrop-blur-md border ${
                       answers[currentQuestion.id] === option
                         ? 'bg-white text-black border-white shadow-[0_0_40px_rgba(255,255,255,0.3)]'
-                        : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:border-white/30'
+                        : `bg-white/5 border-white/10 text-zinc-400 ${mode === 'answer' ? 'hover:text-white hover:border-white/30' : 'opacity-50 cursor-default'}`
                     }`}
                   >
                     <span className="relative z-10">{option}</span>
@@ -281,7 +318,7 @@ export default function QuestionsView({ onComplete }: QuestionsViewProps) {
                   onClick={() => setCurrentIndex(prev => prev + 1)}
                   className="py-3 px-6 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-widest transition-colors"
                  >
-                   Salta
+                   {mode === 'review' ? 'Avanti' : 'Salta'}
                  </button>
                </motion.div>
             )}

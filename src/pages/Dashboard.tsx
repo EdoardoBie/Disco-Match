@@ -3,20 +3,21 @@ import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, LogOut, MessageSquare, Camera, ArrowRight, Loader2 } from 'lucide-react';
+import { User, LogOut, MessageSquare, Camera, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import QuestionsView from '@/components/QuestionsView';
 import MatchesView from '@/components/MatchesView';
 import ChatView from '@/components/ChatView';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types';
 
-type ViewState = 'onboarding' | 'questions' | 'matches';
+type ViewState = 'onboarding' | 'questions' | 'matches' | 'profile' | 'review';
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const { profile, loading, updateProfile } = useProfile();
   const navigate = useNavigate();
   const [nickname, setNickname] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewState>('questions'); // Default to questions check
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -43,8 +44,24 @@ export default function Dashboard() {
 
   const handleUpdateNickname = async () => {
     if (nickname.trim()) {
-      await updateProfile({ nickname, avatar_url: avatarUrl });
-      setView('questions');
+      setError(null);
+      try {
+        await updateProfile({ nickname, avatar_url: avatarUrl });
+        
+        // If they were just changing their profile from matches view, go back to matches
+        if (view === 'profile') {
+          setView('matches');
+        } else {
+          setView('questions');
+        }
+      } catch (err: any) {
+        if (err.message?.includes('profiles_nickname_key') || err.code === '23505') {
+          setError('Oops! Questo nickname è già in uso. Scegline un altro.');
+        } else {
+          setError('Si è verificato un errore durante il salvataggio.');
+          console.error('Update profile error:', err);
+        }
+      }
     }
   };
 
@@ -84,13 +101,21 @@ export default function Dashboard() {
     return <div className="flex items-center justify-center h-full">Caricamento...</div>;
   }
 
-  // ONBOARDING STATE
-  if (view === 'onboarding') {
+  // PROFILE EDITING & ONBOARDING STATE
+  if (view === 'onboarding' || view === 'profile') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center space-y-12 mt-[-5vh] relative z-10">
+      <div className="flex-1 flex flex-col items-center justify-center space-y-12 mt-[-5vh] relative z-10 w-full max-w-md mx-auto">
+        {view === 'profile' && (
+          <button 
+            onClick={() => setView('matches')}
+            className="absolute top-6 left-6 p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/10 z-50 text-zinc-400 hover:text-white"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <AnimatePresence mode="wait">
           <motion.div 
-            key="onboarding-content"
+            key={`${view}-content`}
             initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
@@ -98,8 +123,12 @@ export default function Dashboard() {
             className="flex flex-col items-center gap-12 w-full max-w-md mx-auto px-6"
           >
             <div className="text-center space-y-4">
-              <h1 className="text-6xl font-black tracking-tighter uppercase text-white drop-shadow-2xl">Chi sei?</h1>
-              <p className="text-zinc-400 text-sm font-bold tracking-widest uppercase">Scegli un nome per farti riconoscere.</p>
+              <h1 className="text-5xl sm:text-6xl font-black tracking-tighter uppercase text-white drop-shadow-2xl">
+                {view === 'profile' ? 'Il tuo Profilo' : 'Chi sei?'}
+              </h1>
+              <p className="text-zinc-400 text-xs sm:text-sm font-bold tracking-widest uppercase">
+                {view === 'profile' ? 'Aggiorna i tuoi dati.' : 'Scegli un nome per farti riconoscere.'}
+              </p>
             </div>
 
             <div className="flex flex-col items-center gap-6">
@@ -131,21 +160,34 @@ export default function Dashboard() {
                 </motion.div>
               </label>
               <span className="text-[10px] text-zinc-500 font-bold tracking-[0.2em] uppercase">
-                {avatarUrl ? 'Immagine caricata' : 'Tocca per caricare foto'}
+                {avatarUrl ? 'Tocca per cambiare foto' : 'Tocca per caricare foto'}
               </span>
             </div>
 
             <div className="w-full space-y-8">
-              <div className="relative group">
+              <div className="relative group mx-auto w-full max-w-[280px] sm:max-w-full">
                 <input
                   type="text"
                   placeholder="NICKNAME"
                   value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  className="w-full bg-transparent border-none p-2 text-center text-white font-black tracking-tighter uppercase placeholder:text-zinc-800 focus:outline-none transition-all text-4xl caret-white"
+                  onChange={(e) => {
+                    setNickname(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  className="w-full bg-transparent border-none p-2 text-center text-white font-black tracking-tighter uppercase placeholder:text-zinc-800 focus:outline-none transition-all text-3xl sm:text-4xl caret-white"
                 />
                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-zinc-800 rounded-full group-focus-within:w-full group-focus-within:bg-white transition-all duration-500" />
               </div>
+              
+              {error && (
+                <motion.p 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center text-red-400 font-bold text-xs uppercase tracking-widest mt-2"
+                >
+                  {error}
+                </motion.p>
+              )}
 
               <div className="flex justify-center w-full pt-4">
                 <motion.button 
@@ -153,9 +195,9 @@ export default function Dashboard() {
                   whileTap={{ scale: 0.95 }}
                   onClick={handleUpdateNickname}
                   disabled={!nickname.trim()}
-                  className="py-4 px-10 bg-white text-black font-black uppercase tracking-widest rounded-full hover:bg-zinc-200 transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+                  className="py-4 px-10 bg-white text-black font-black uppercase tracking-widest rounded-full hover:bg-zinc-200 transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.15)] whitespace-nowrap"
                 >
-                  Entra in pista <ArrowRight className="w-5 h-5" />
+                  {view === 'profile' ? 'Salva Modifiche' : 'Entra in pista'} <ArrowRight className="w-5 h-5 mx-auto shrink-0" />
                 </motion.button>
               </div>
             </div>
@@ -165,8 +207,12 @@ export default function Dashboard() {
     );
   }
 
-  // QUESTIONS STATE (Clean, Full Screen)
-  if (view === 'questions') {
+  const handleReviewClose = () => {
+    setView('matches');
+  };
+
+  // QUESTIONS STATE OR REVIEW STATE (Clean, Full Screen)
+  if (view === 'questions' || view === 'review') {
     return (
       <motion.div 
         key="questions-view"
@@ -176,7 +222,11 @@ export default function Dashboard() {
         transition={{ duration: 0.5 }}
         className="fixed inset-0 z-50 flex flex-col overflow-hidden overscroll-none touch-none bg-black"
       >
-        <QuestionsView onComplete={() => setView('matches')} />
+         <QuestionsView 
+           mode={view === 'review' ? 'review' : 'answer'} 
+           onComplete={() => setView('matches')} 
+           onClose={handleReviewClose}
+         />
       </motion.div>
     );
   }
@@ -192,22 +242,22 @@ export default function Dashboard() {
       className="flex-1 flex flex-col space-y-6 pb-20"
     >
       <header className="flex justify-between items-center pb-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1A1A1A]/80 backdrop-blur-md flex items-center justify-center text-white font-bold uppercase border border-white/10 overflow-hidden">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.nickname || ''} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : (
-              profile?.nickname?.[0] || '?'
-            )}
-          </div>
-          <div>
-            <h2 className="font-bold text-lg uppercase tracking-tight">{profile?.nickname}</h2>
-            <p className="text-xs text-[#934517] font-bold tracking-widest uppercase flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-[#934517] rounded-full animate-pulse" />
-              In Pista
-            </p>
-          </div>
-        </div>
+          <button onClick={() => setView('profile')} className="flex items-center gap-3 text-left group hover:opacity-80 transition-opacity">
+            <div className="w-10 h-10 rounded-full bg-[#1A1A1A]/80 backdrop-blur-md flex items-center justify-center text-white font-bold uppercase border border-white/10 overflow-hidden group-hover:border-white/30 transition-colors">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.nickname || ''} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                profile?.nickname?.[0] || '?'
+              )}
+            </div>
+            <div>
+              <h2 className="font-bold text-lg uppercase tracking-tight">{profile?.nickname}</h2>
+              <p className="text-xs text-[#934517] font-bold tracking-widest uppercase flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-[#934517] rounded-full animate-pulse" />
+                In Pista
+              </p>
+            </div>
+          </button>
         <button onClick={() => signOut()} className="p-2 hover:bg-white/10 rounded-full transition-colors">
           <LogOut className="w-5 h-5 text-zinc-500" />
         </button>
@@ -216,8 +266,8 @@ export default function Dashboard() {
       <div className="flex items-center justify-between px-2">
          <h2 className="text-2xl font-black uppercase tracking-tighter">I tuoi Match</h2>
          <button 
-           onClick={() => setView('questions')}
-           className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
+           onClick={() => setView('review')}
+           className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors border border-white/5 py-1 px-3 rounded-full hover:border-white/20 bg-white/5"
          >
            Rivedi risposte
          </button>

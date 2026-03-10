@@ -3,16 +3,20 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Profile } from '@/types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, MessageCircle, ArrowRight } from 'lucide-react';
+import { Heart, MessageCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { LiquidButton } from '@/components/ui/liquid-glass-button';
 
 type Match = {
   profile: Profile;
   score: number;
-  commonAnswers: number;
+  percentage: number;
 };
 
-export default function MatchesView() {
+type MatchesViewProps = {
+  onOpenChat?: (profile: Profile) => void;
+};
+
+export default function MatchesView({ onOpenChat }: MatchesViewProps) {
   const { user } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,35 +75,43 @@ export default function MatchesView() {
       .select('user_id, question_id, answer_text')
       .neq('user_id', user!.id);
 
-    const userScores: Record<string, { score: number; common: number }> = {};
+    const userScores: Record<string, { sameAnswers: number; commonQuestions: number }> = {};
     
     allProfiles.forEach(profile => {
-      userScores[profile.id] = { score: 0, common: 0 };
+      userScores[profile.id] = { sameAnswers: 0, commonQuestions: 0 };
     });
 
     if (myAnswers && myAnswers.length > 0 && otherAnswers) {
       otherAnswers.forEach((oa: any) => {
         if (userScores[oa.user_id]) {
           const myAnswer = myAnswers.find(ma => ma.question_id === oa.question_id);
-          if (myAnswer && 
-              myAnswer.answer_text && 
-              oa.answer_text && 
-              String(myAnswer.answer_text).trim() === String(oa.answer_text).trim()) {
-            userScores[oa.user_id].score += 1;
-            userScores[oa.user_id].common += 1;
+          if (myAnswer) {
+            // Both answered this question, so it's a common question
+            userScores[oa.user_id].commonQuestions += 1;
+            if (myAnswer.answer_text && 
+                oa.answer_text && 
+                String(myAnswer.answer_text).trim() === String(oa.answer_text).trim()) {
+              userScores[oa.user_id].sameAnswers += 1;
+            }
           }
         }
       });
     }
 
     const matchesList = allProfiles
-      .map(p => ({
-        profile: p,
-        score: userScores[p.id]?.score || 0,
-        commonAnswers: userScores[p.id]?.common || 0
-      }))
-      .filter(m => m.score > 3)
-      .sort((a, b) => b.score - a.score);
+      .map(p => {
+        const data = userScores[p.id];
+        const percentage = data && data.commonQuestions > 0
+          ? Math.round((data.sameAnswers / data.commonQuestions) * 100)
+          : 0;
+        return {
+          profile: p,
+          score: percentage,
+          percentage,
+        };
+      })
+      .filter(m => m.percentage >= 50)
+      .sort((a, b) => b.percentage - a.percentage);
     
     setMatches(matchesList);
     
@@ -113,9 +125,9 @@ export default function MatchesView() {
     }
   };
 
-  const getFunSummary = (score: number) => {
-    if (score >= 5) return "Siete praticamente la stessa persona. Fatevi un drink insieme, SUBITO.";
-    if (score === 4) return "Un'ottima intesa! Avete molto di cui parlare stasera.";
+  const getFunSummary = (percentage: number) => {
+    if (percentage >= 80) return "Siete praticamente la stessa persona. Fatevi un drink insieme, SUBITO.";
+    if (percentage >= 60) return "Un'ottima intesa! Avete molto di cui parlare stasera.";
     return "C'è del potenziale. Rompete il ghiaccio e scoprite il resto!";
   };
 
@@ -224,7 +236,7 @@ export default function MatchesView() {
                 <h3 className="font-black text-4xl uppercase tracking-tighter text-white">{topMatch.profile.nickname}</h3>
                 <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/10 border border-white/5 backdrop-blur-md">
                   <span className="text-xs text-white font-bold tracking-widest uppercase">
-                    {topMatch.commonAnswers} Punti in comune
+                    {topMatch.percentage}% Match
                   </span>
                 </div>
               </div>
@@ -232,12 +244,13 @@ export default function MatchesView() {
               <div className="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
               <p className="text-sm text-zinc-300 italic font-medium leading-relaxed px-4">
-                "{getFunSummary(topMatch.commonAnswers)}"
+                "{getFunSummary(topMatch.percentage)}"
               </p>
 
               <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => onOpenChat?.(topMatch.profile)}
                 className="w-full py-4 bg-white text-black font-black uppercase tracking-widest rounded-full hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
               >
                 Scrivi ora <MessageCircle className="w-5 h-5" />
@@ -257,6 +270,7 @@ export default function MatchesView() {
             Vedi altri {matches.length - 1} match <ArrowRight className="w-3 h-3" />
           </motion.button>
         )}
+
       </motion.div>
     );
   }
@@ -295,17 +309,21 @@ export default function MatchesView() {
               <div>
                 <h3 className="font-black text-xl uppercase tracking-tight text-white group-hover:text-white transition-colors">{match.profile.nickname}</h3>
                 <p className="text-[10px] text-zinc-400 font-bold tracking-widest uppercase mt-1">
-                  <span className="text-white">{match.commonAnswers}</span> Punti in comune
+                  <span className="text-white">{match.percentage}%</span> Match
                 </p>
               </div>
             </div>
             
-            <button className="p-3 bg-white text-black rounded-full hover:bg-zinc-200 transition-all shadow-lg group-hover:scale-110 duration-300">
+            <button 
+              onClick={() => onOpenChat?.(match.profile)}
+              className="p-3 bg-white text-black rounded-full hover:bg-zinc-200 transition-all shadow-lg group-hover:scale-110 duration-300"
+            >
               <MessageCircle className="w-5 h-5" />
             </button>
           </motion.div>
         ))}
       </AnimatePresence>
+
     </div>
   );
 }

@@ -6,7 +6,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, LogOut, MessageSquare, Camera, ArrowRight, Loader2 } from 'lucide-react';
 import QuestionsView from '@/components/QuestionsView';
 import MatchesView from '@/components/MatchesView';
+import ChatView from '@/components/ChatView';
 import { supabase } from '@/lib/supabase';
+import { Profile } from '@/types';
 
 type ViewState = 'onboarding' | 'questions' | 'matches';
 
@@ -18,6 +20,7 @@ export default function Dashboard() {
   const [view, setView] = useState<ViewState>('questions'); // Default to questions check
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [chatWithProfile, setChatWithProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -180,6 +183,7 @@ export default function Dashboard() {
 
   // MATCHES STATE (With Header)
   return (
+    <>
     <motion.div 
       key="matches-view"
       initial={{ opacity: 0 }}
@@ -220,8 +224,15 @@ export default function Dashboard() {
       </div>
 
       <div className="flex-1">
-        <MatchesView />
+        <MatchesView onOpenChat={(profile) => setChatWithProfile(profile)} />
       </div>
     </motion.div>
+
+    <AnimatePresence>
+      {chatWithProfile && (
+        <ChatView partner={chatWithProfile} onClose={() => setChatWithProfile(null)} />
+      )}
+    </AnimatePresence>
+    </>
   );
 }

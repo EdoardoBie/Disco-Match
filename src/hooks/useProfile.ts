@@ -27,12 +27,31 @@ export function useProfile() {
           .from('profiles')
           .select('*')
           .eq('id', user!.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Error fetching profile:', error);
-        } else {
+        } else if (data) {
           setProfile(data);
+        } else {
+          // Profile doesn't exist yet — create it automatically
+          const newProfile: Profile = {
+            id: user!.id,
+            nickname: user!.user_metadata?.full_name || user!.email?.split('@')[0] || null,
+            avatar_url: user!.user_metadata?.avatar_url || null,
+            role: 'user',
+          };
+          const { data: created, error: insertError } = await supabase
+            .from('profiles')
+            .upsert(newProfile)
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+          } else {
+            setProfile(created);
+          }
         }
       } catch (err) {
         console.error('Unexpected error fetching profile:', err);

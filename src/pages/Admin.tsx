@@ -53,6 +53,23 @@ export default function Admin() {
   useEffect(() => {
     if (profile?.role === 'admin') {
       fetchDashboardData();
+
+      // Realtime subscription for overview stats
+      if (activeTab === 'overview') {
+        const channel = supabase.channel('admin_stats')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+             // Incremental update could be done, but refetching is safer for simple counts
+             fetchDashboardData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'answers' }, () => {
+             fetchDashboardData();
+          })
+          .subscribe();
+          
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }
     }
   }, [profile, activeTab]);
 
@@ -134,19 +151,39 @@ export default function Admin() {
   };
 
   const toggleQuestionStatus = async (id: string, currentStatus: boolean) => {
+    // Optimistic UI update
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, is_active: !currentStatus } : q));
+    
     const { error } = await supabase
       .from('questions')
       .update({ is_active: !currentStatus })
       .eq('id', id);
 
-    if (error) console.error('Error updating question:', error);
-    else fetchDashboardData();
+    if (error) {
+       console.error('Error updating question:', error);
+       // Revert on error
+       setQuestions(prev => prev.map(q => q.id === id ? { ...q, is_active: currentStatus } : q));
+    }
   };
 
   const deleteQuestion = async (id: string) => {
+    // Optimistic UI update
+    const previousQuestions = [...questions];
+    setQuestions(prev => prev.filter(q => q.id !== id));
+    
+    if (!window.confirm("Sei sicuro di voler eliminare questa domanda? Tutte le risposte ad essa associate andranno perse.")) {
+      setQuestions(previousQuestions);
+      return;
+    }
+
     const { error } = await supabase.from('questions').delete().eq('id', id);
-    if (error) console.error('Error deleting question:', error);
-    else fetchDashboardData();
+    if (error) {
+      console.error('Error deleting question:', error);
+      setQuestions(previousQuestions); // Revert on error
+    } else {
+      // Background refetch for other tabs if needed (stats)
+      if (activeTab === 'overview') fetchDashboardData();
+    }
   };
 
   const handleUpdatePassword = async () => {
@@ -176,7 +213,7 @@ export default function Admin() {
       >
         <button 
           onClick={() => navigate('/dashboard')}
-          className="absolute top-6 left-6 p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/10"
+          className="absolute top-6 left-6 p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/10 z-50"
         >
           <ArrowLeft className="w-5 h-5 text-zinc-400" />
         </button>
@@ -380,9 +417,9 @@ export default function Admin() {
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-black/50 border border-white/10 flex items-center justify-center overflow-hidden font-black uppercase">
-                              {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-sm text-zinc-500">{u.nickname?.[0] || '?'}</span>}
+                              {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-sm text-zinc-500">{u.nickname?.[0] || 'O'}</span>}
                             </div>
-                            <span className="font-bold uppercase tracking-tight">{u.nickname || 'Anonimo'}</span>
+                            <span className="font-bold uppercase tracking-tight">{u.nickname || 'Ospite'}</span>
                           </div>
                         </td>
                         <td className="p-4">
@@ -391,7 +428,7 @@ export default function Admin() {
                           </span>
                         </td>
                         <td className="p-4 text-right">
-                          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-500 hover:text-white">
+                          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-500 hover:text-white" title="Settings">
                             <Settings className="w-4 h-4" />
                           </button>
                         </td>

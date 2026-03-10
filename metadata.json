@@ -1,0 +1,7 @@
+{
+  "name": "Remix: DiscoMatch",
+  "description": "An instant social web app for nightclubs to connect people based on affinities using anonymous login and real-time matching.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
